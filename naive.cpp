@@ -1,23 +1,16 @@
-#include <cassert>
-#include <cstdio>
 #include <cstring>
-#include <stack>
 #include <vector>
+#include <iostream>
 
 int main(int, char **) {
 
 #include "program.h"
-
-  std::stack<size_t> stack;
   std::vector<int> cells(static_cast<size_t>(30000), 0);
   size_t ptr{0};
-  int ignore = 0;
+  int ignore{0};
+  const auto prog_size = std::strlen(prg);
 
-  for (size_t i = 0; i < std::strlen(prg); i++) {
-    if (ignore && (prg[i] != ']' && prg[i] != '[')) {
-      continue;
-    }
-
+  for (size_t i = 0; i < prog_size; i++) {
     switch (prg[i]) {
     case '>':
       ptr++;
@@ -38,23 +31,29 @@ int main(int, char **) {
       cells[ptr] = std::getchar();
       break;
     case '[':
-      stack.push(i - 1);
-      if (cells[ptr] == 0) {
-        ignore++;
+      if (!cells[ptr]) {
+        for (ignore = 1, i++; ignore; ++i) {
+          if (prg[i] == '[') {
+            ignore++;
+          } else if (prg[i] == ']') {
+            ignore--;
+          }
+        }
+        i--;
       }
       break;
     case ']':
-      if (cells[ptr] != 0) {
-        assert(stack.size() > 0);
-        i = stack.top();
+      if (cells[ptr]) {
+        for (ignore = 1, i--; ignore; --i) {
+          if (prg[i] == ']') {
+            ignore++;
+          } else if (prg[i] == '[') {
+            ignore--;
+          }
+        }
       }
-      if (ignore) {
-        ignore--;
-      }
-      stack.pop();
       break;
     }
   }
-
   return 0;
 }

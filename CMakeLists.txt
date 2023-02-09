@@ -4,6 +4,7 @@ project(bf)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_FLAGS "-march=native")
 
-add_executable(brainfuck brainfuck.cpp)
+add_executable(naive naive.cpp)
 
