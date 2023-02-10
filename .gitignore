@@ -1,1 +1,5 @@
 build/
+CMakeFiles
+.clangd
+CMakeCache.txt
+compile_commands.json
