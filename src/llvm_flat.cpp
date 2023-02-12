@@ -26,40 +26,66 @@ int main() {
   auto module  = std::make_unique<llvm::Module>("brainfuck", *context);
 
   std::vector<llvm::Type *> no_args{};
-  auto FT    = llvm::FunctionType::get(builder->getInt8Ty(), no_args, false);
-  auto F     = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "bf",
-                                      module.get());
+  auto FT = llvm::FunctionType::get(builder->getInt8Ty(), no_args, false);
+  auto F  = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "main",
+                                   module.get());
   auto block = llvm::BasicBlock::Create(*context, "entry", F);
   builder->SetInsertPoint(block);
 
-  auto stack_size = builder->getInt32(32 * 1000);
-  auto mem_ptr =
-      builder->CreateAlloca(builder->getPtrTy(), 0u, stack_size, "mem_ptr");
+  static const int stack_size = 32000;
+
+  std::vector<llvm::Type *> arg_types;
+  arg_types.push_back(builder->getInt64Ty());
+  arg_types.push_back(builder->getInt64Ty());
+
+  auto calloc_type =
+      llvm::FunctionType::get(builder->getPtrTy(), arg_types, false);
+  auto calloc = module->getOrInsertFunction("calloc", calloc_type);
+
+  auto stack_size_const = builder->getInt32(stack_size);
+  auto char_size        = builder->getInt32(1);
+
+  std::vector<llvm::Value *> args       = {stack_size_const, char_size};
+  auto                       stack_base = builder->CreateCall(calloc, args);
+
+  auto stack_ptr =
+      builder->CreateAlloca(builder->getInt8PtrTy(), 0u, "stack_ptr");
+
+  builder->CreateStore(stack_ptr, stack_base);
 
   auto source = read_program("program.bf");
 
   for (char token : source) {
     switch (token) {
-    case '>':
-      builder->CreateAdd(mem_ptr, builder->getInt8(1));
-      break;
-    case '<':
-      builder->CreateSub(mem_ptr, builder->getInt8(1));
-      break;
-    case '-':
-      {
-        auto sub_val = builder->CreateLoad(builder->getInt8Ty(), mem_ptr);
-        builder->CreateSub(sub_val, builder->getInt8(1));
-        builder->CreateStore(sub_val, mem_ptr);
-      }
-      break;
-    case '+':
-      {
-        auto add_val = builder->CreateLoad(builder->getInt8Ty(), mem_ptr);
-        builder->CreateAdd(add_val, builder->getInt8(1));
-        builder->CreateStore(add_val, mem_ptr);
-      }
-      break;
+    case '>': {
+      auto inc_gep = builder->CreateGEP(builder->getInt8PtrTy(), stack_ptr,
+                                        builder->getInt8(1));
+      builder->CreateStore(inc_gep, stack_ptr);
+    } break;
+    case '<': {
+      auto dec_gep = builder->CreateGEP(builder->getInt8PtrTy(), stack_ptr,
+                                        builder->getInt8(-1));
+      builder->CreateStore(dec_gep, stack_ptr);
+    } break;
+    case '-': {
+      auto sub_val = builder->CreateLoad(builder->getInt8Ty(), stack_ptr);
+      builder->CreateSub(sub_val, builder->getInt8(1));
+      builder->CreateStore(sub_val, stack_ptr);
+    } break;
+    case '+': {
+      auto add_val = builder->CreateLoad(builder->getInt8Ty(), stack_ptr);
+      builder->CreateAdd(add_val, builder->getInt8(1));
+      builder->CreateStore(add_val, stack_ptr);
+    } break;
+    case '.': {
+      auto putchar_type = llvm::FunctionType::get(builder->getVoidTy(), false);
+      auto putchar      = module->getOrInsertFunction("putchar", putchar_type);
+      auto char_val     = builder->CreateLoad(builder->getInt8Ty(), stack_ptr);
+      auto char_int_val =
+          builder->CreateIntCast(char_val, builder->getInt32Ty(), true);
+      builder->CreateCall(putchar, char_int_val);
+
+    } break;
     }
   }
 
