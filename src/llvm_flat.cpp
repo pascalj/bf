@@ -78,12 +78,17 @@ int main() {
       builder->CreateStore(add_val, stack_ptr);
     } break;
     case '.': {
-      auto putchar_type = llvm::FunctionType::get(builder->getVoidTy(), false);
-      auto putchar      = module->getOrInsertFunction("putchar", putchar_type);
-      auto char_val     = builder->CreateLoad(builder->getInt8Ty(), stack_ptr);
+      auto char_val = builder->CreateLoad(builder->getInt8Ty(), stack_ptr);
       auto char_int_val =
           builder->CreateIntCast(char_val, builder->getInt32Ty(), true);
-      builder->CreateCall(putchar, char_int_val);
+
+      std::vector<llvm::Type *> putchar_atypes = {builder->getInt32Ty()};
+      auto                      putchar_type =
+          llvm::FunctionType::get(builder->getVoidTy(), putchar_atypes, false);
+      std::vector<llvm::Value *> putchar_args = {char_int_val};
+      auto                       putchar =
+          module->getOrInsertFunction("putchar", putchar_type);
+      builder->CreateCall(putchar, putchar_args);
 
     } break;
     }
